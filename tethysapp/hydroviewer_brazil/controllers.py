@@ -343,40 +343,14 @@ def hiwat(request):
                                    initial=json.dumps([geoserver_base_url, geoserver_workspace, region, extra_feature]),
                                    name='geoserver_endpoint',
                                    disabled=True)
-    today = dt.datetime.now()
-    year = str(today.year)
-    month = str(today.strftime("%m"))
-    day = str(today.strftime("%d"))
-    date = day + '/' + month + '/' + year
-    lastyear = int(year) - 1
-    date2 = day + '/' + month + '/' + str(lastyear)
-    startdateobs = DatePicker(name='startdateobs',
-                              display_text='Start Date',
-                              autoclose=True,
-                              format='dd/mm/yyyy',
-                              start_date='01/01/1950',
-                              start_view='month',
-                              today_button=True,
-                              initial=date2,
-                              classes='datepicker')
-    enddateobs = DatePicker(name='enddateobs',
-                            display_text='End Date',
-                            autoclose=True,
-                            format='dd/mm/yyyy',
-                            start_date='01/01/1950',
-                            start_view='month',
-                            today_button=True,
-                            initial=date,
-                            classes='datepicker')
+
     context = {
         "base_name": base_name,
         "model_input": model_input,
         "watershed_select": watershed_select,
         "zoom_info": zoom_info,
         "geoserver_endpoint": geoserver_endpoint,
-        "defaultUpdateButton":defaultUpdateButton,
-        "startdateobs": startdateobs,
-        "enddateobs": enddateobs
+        "defaultUpdateButton":defaultUpdateButton
     }
 
     return render(request, '{0}/hiwat.html'.format(base_name), context)
@@ -1334,99 +1308,6 @@ def shp_to_geojson(request):
         return JsonResponse({'error': 'No shapefile found.'})
 
 
-# def get_daily_seasonal_streamflow_chart(request):
-#     """
-#     Returns daily seasonal streamflow chart for unique river ID
-#     """
-#     units = request.GET.get('units')
-#     seasonal_data_file, river_id, watershed_name, subbasin_name =\
-#         validate_historical_data(request.GET,
-#                                  "seasonal_average*.nc",
-#                                  "Seasonal Average")
-#
-#     with rivid_exception_handler('Seasonal Average', river_id):
-#         with xarray.open_dataset(seasonal_data_file) as seasonal_nc:
-#             seasonal_data = seasonal_nc.sel(rivid=river_id)
-#             base_date = datetime.datetime(2017, 1, 1)
-#             day_of_year = \
-#                 [base_date + datetime.timedelta(days=ii)
-#                  for ii in range(seasonal_data.dims['day_of_year'])]
-#             season_avg = seasonal_data.average_flow.values
-#             season_std = seasonal_data.std_dev_flow.values
-#
-#             season_avg[season_avg < 0] = 0
-#
-#             avg_plus_std = season_avg + season_std
-#             avg_min_std = season_avg - season_std
-#
-#             avg_plus_std[avg_plus_std < 0] = 0
-#             avg_min_std[avg_min_std < 0] = 0
-#
-#     if units == 'english':
-#         # convert from m3/s to ft3/s
-#         season_avg *= M3_TO_FT3
-#         avg_plus_std *= M3_TO_FT3
-#         avg_min_std *= M3_TO_FT3
-#
-#     # generate chart
-#     avg_scatter = go.Scatter(
-#         name='Average',
-#         x=day_of_year,
-#         y=season_avg,
-#         line=dict(
-#             color='#0066ff'
-#         )
-#     )
-#
-#     std_plus_scatter = go.Scatter(
-#         name='Std. Dev. Upper',
-#         x=day_of_year,
-#         y=avg_plus_std,
-#         fill=None,
-#         mode='lines',
-#         line=dict(
-#             color='#98fb98'
-#         )
-#     )
-#
-#     std_min_scatter = go.Scatter(
-#         name='Std. Dev. Lower',
-#         x=day_of_year,
-#         y=avg_min_std,
-#         fill='tonexty',
-#         mode='lines',
-#         line=dict(
-#             color='#98fb98',
-#         )
-#     )
-#
-#     layout = go.Layout(
-#         title="Daily Seasonal Streamflow<br>"
-#               "<sub>{0} ({1}): {2}</sub>"
-#               .format(watershed_name, subbasin_name, river_id),
-#         xaxis=dict(
-#             title='Day of Year',
-#             tickformat="%b"),
-#         yaxis=dict(
-#             title='Streamflow ({}<sup>3</sup>/s)'
-#                   .format(get_units_title(units)))
-#     )
-#
-#     chart_obj = PlotlyView(
-#         go.Figure(data=[std_plus_scatter,
-#                         std_min_scatter,
-#                         avg_scatter],
-#                   layout=layout)
-#     )
-#
-#     context = {
-#         'gizmo_object': chart_obj,
-#     }
-#
-#     return render(request,
-#                   'streamflow_prediction_tool/gizmo_ajax.html',
-#                   context)
-
 def setDefault(request):
     get_data = request.GET
     set_custom_setting(get_data.get('ws_name'), get_data.get('model_name'))
@@ -1536,15 +1417,21 @@ def forecastpercent(request):
 
 def get_discharge_data(request):
     """
-        Get data from fews stations
+        Get data from brazil gages
     """
     get_data = request.GET
 
     try:
 
         codEstacao = get_data['stationcode']
-        dataInicio = '14/08/2018'
-        dataFim = '21/08/2018'
+
+        today = dt.datetime.now()
+        year = str(today.year)
+        month = str(today.strftime("%m"))
+        day = str(today.strftime("%d"))
+        dataFim = day + '/' + month + '/' + year
+        lastmonth = int(month) - 1
+        dataInicio = day + '/' + str(lastmonth) + '/' + year
 
         url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
 
@@ -1594,3 +1481,180 @@ def get_discharge_data(request):
     except Exception as e:
         print str(e)
         return JsonResponse({'error': 'No  data found for the station.'})
+
+def get_waterlevel_data(request):
+    """
+        Get data from brazil gages
+    """
+    get_data = request.GET
+
+    try:
+
+        codEstacao = get_data['stationcode']
+
+        today = dt.datetime.now()
+        year = str(today.year)
+        month = str(today.strftime("%m"))
+        day = str(today.strftime("%d"))
+        dataFim = day + '/' + month + '/' + year
+        lastmonth = int(month) - 1
+        dataInicio = day + '/' + str(lastmonth) + '/' + year
+
+        url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
+
+        response = requests.get(url)
+
+        soup = BeautifulSoup(response.content, "xml")
+
+        times = soup.find_all('DataHora')
+        values = soup.find_all('Nivel')
+
+        dates = []
+        waterlevels = []
+
+        for time in times:
+            dates.append(dt.datetime.strptime(time.get_text().strip(), "%Y-%m-%d %H:%M:%S"))
+
+        for value in values:
+            waterlevels.append(float(value.get_text().strip()))
+
+        observed_wls = waterlevels[::-1]
+        observed_dates = dates[::-1]
+
+        observed_WL = go.Scatter(
+            x=observed_dates,
+            y=observed_wls,
+        )
+
+        layout = go.Layout(title='Observed Water Level',
+                           xaxis=dict(
+                               title='Dates', ),
+                           yaxis=dict(
+                               title='Water Level (m)',
+                               autorange=True),
+                           showlegend=False)
+
+        chart_obj = PlotlyView(
+            go.Figure(data=[observed_WL],
+                      layout=layout)
+        )
+
+        context = {
+            'gizmo_object': chart_obj,
+        }
+
+        return render(request, '{0}/gizmo_ajax.html'.format(base_name), context)
+
+    except Exception as e:
+        print str(e)
+        return JsonResponse({'error': 'No  data found for the station.'})
+
+def get_observed_discharge_csv(request):
+    """
+        Get data from brazil gages
+    """
+    get_data = request.GET
+
+    try:
+
+        codEstacao = get_data['stationcode']
+        nomEstacao = get_data['stationname']
+
+        today = dt.datetime.now()
+        year = str(today.year)
+        month = str(today.strftime("%m"))
+        day = str(today.strftime("%d"))
+        dataFim = day + '/' + month + '/' + year
+        lastmonth = int(month) - 1
+        dataInicio = day + '/' + str(lastmonth) + '/' + year
+
+        url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
+
+        response = requests.get(url)
+
+        soup = BeautifulSoup(response.content, "xml")
+
+        times = soup.find_all('DataHora')
+        values = soup.find_all('Vazao')
+
+        dates = []
+        flows = []
+
+        for time in times:
+            dates.append(dt.datetime.strptime(time.get_text().strip(), "%Y-%m-%d %H:%M:%S"))
+
+        for value in values:
+            flows.append(float(value.get_text().strip()))
+
+        observed_flows = flows[::-1]
+        observed_dates = dates[::-1]
+
+        pairs = [list(a) for a in zip(observed_dates, observed_flows)]
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename=discharge_{0}_{1}.csv'.format(codEstacao, nomEstacao)
+        writer = csv_writer(response)
+        writer.writerow(['datetime', 'flow (m3/s)'])
+        for row_data in pairs:
+            writer.writerow(row_data)
+
+        return response
+    except Exception as e:
+        print str(e)
+        return JsonResponse({'error': 'An unknown error occurred while retrieving the Discharge Data.'})
+
+def get_observed_waterlevel_csv(request):
+    """
+        Get data from brazil gages
+    """
+    get_data = request.GET
+
+    try:
+
+        codEstacao = get_data['stationcode']
+        nomEstacao = get_data['stationname']
+
+        today = dt.datetime.now()
+        year = str(today.year)
+        month = str(today.strftime("%m"))
+        day = str(today.strftime("%d"))
+        dataFim = day + '/' + month + '/' + year
+        lastmonth = int(month) - 1
+        dataInicio = day + '/' + str(lastmonth) + '/' + year
+
+        url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
+
+        response = requests.get(url)
+
+        soup = BeautifulSoup(response.content, "xml")
+
+        times = soup.find_all('DataHora')
+        values = soup.find_all('Nivel')
+
+        dates = []
+        waterlevels = []
+
+        for time in times:
+            dates.append(dt.datetime.strptime(time.get_text().strip(), "%Y-%m-%d %H:%M:%S"))
+
+        for value in values:
+            waterlevels.append(float(value.get_text().strip()))
+
+        observed_wls = waterlevels[::-1]
+        observed_dates = dates[::-1]
+
+        pairs = [list(a) for a in zip(observed_dates, observed_wls)]
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename=waterlevel_{0}_{1}.csv'.format(codEstacao, nomEstacao)
+        writer = csv_writer(response)
+        writer.writerow(['datetime', 'waterlevel (m)'])
+        for row_data in pairs:
+            writer.writerow(row_data)
+        return response
+
+    except Exception as e:
+        print str(e)
+        return JsonResponse({'error': 'An unknown error occurred while retrieving the Discharge Data.'})
+
+
+

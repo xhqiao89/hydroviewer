@@ -162,6 +162,18 @@ class Hydroviewer(TethysAppBase):
                 name='get_discharge_data',
                 url='hiwat-rapid/get-discharge-data',
                 controller='{0}.controllers.get_discharge_data'.format(base_name)),
+            UrlMap(
+                name='get_waterlevel_data',
+                url='hiwat-rapid/get-waterlevel-data',
+                controller='{0}.controllers.get_waterlevel_data'.format(base_name)),
+            UrlMap(
+                name='get_observed_discharge_csv',
+                url='hiwat-rapid/get-observed-discharge-csv',
+                controller='{0}.controllers.get_observed_discharge_csv'.format(base_name)),
+            UrlMap(
+                name='get_observed_waterlevel_csv',
+                url='hiwat-rapid/get-observed-waterlevel-csv',
+                controller='{0}.controllers.get_observed_waterlevel_csv'.format(base_name)),
         )
 
         return url_maps
