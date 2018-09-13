@@ -6,6 +6,7 @@ var default_extent,
     stream_geom,
     layers,
     wmsLayer,
+    gages_layer,
     vectorLayer,
     feature,
     featureOverlay,
@@ -386,6 +387,20 @@ function view_watershed() {
                 map.addLayer(wmsLayer);
 
                 feature_layer = wmsLayer;
+
+                gages_layer = new ol.layer.Image({
+                   source: new ol.source.ImageWMS({
+                       url: JSON.parse($('#geoserver_endpoint').val())[0].replace(/\/$/, "")+'/wms',
+                       params: {'LAYERS':"Brazil_gages"},
+                       serverType: 'geoserver',
+                       crossOrigin: 'Anonymous'
+                   })
+                });
+
+                feature_layer2 = gages_layer;
+
+                map.addLayer(wmsLayer);
+                map.addLayer(gages_layer);
 
                 map.getView().fit(result.legend_extent, map.getSize())
             },
@@ -783,6 +798,59 @@ function get_forecast_percent(watershed, subbasin, comid, startdate) {
     })
 }
 
+function get_discharge_info (stationcode, stationname, startdateobs, enddateobs) {
+    $('#observed-loading-Q').removeClass('hidden');
+    $.ajax({
+        url: 'hiwat-rapid/get-discharge-data',
+        type: 'GET',
+        data: {'stationcode' : stationcode, 'stationname' : stationname, 'startdateobs' : startdateobs, 'enddateobs' : enddateobs},
+        error: function () {
+            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Discharge Data</strong></p>');
+            $('#info').removeClass('hidden');
+
+            setTimeout(function () {
+                $('#info').addClass('hidden')
+            }, 5000);
+        },
+        success: function (data) {
+            alert("11111111111111111111111")
+            if (!data.error) {
+                $('#observed-loading-Q').addClass('hidden');
+                $('#dates').removeClass('hidden');
+//                $('#obsdates').removeClass('hidden');
+                $loading.addClass('hidden');
+                $('#observed-chart-Q').removeClass('hidden');
+                $('#observed-chart-Q').html(data);
+
+                //resize main graph
+                Plotly.Plots.resize($("#observed-chart-Q .js-plotly-plot")[0]);
+
+                var params = {
+                    stationcode: stationcode,
+                    stationname: stationname,
+                };
+
+                $('#submit-download-observed-discharge').attr({
+                    target: '_blank',
+                    href: 'hiwat-rapid/get-observed-discharge-csv?' + jQuery.param(params)
+                });
+
+                $('#download_observed_discharge').removeClass('hidden');
+
+                } else if (data.error) {
+                	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Discharge Data</strong></p>');
+                	$('#info').removeClass('hidden');
+
+                	setTimeout(function() {
+                    	$('#info').addClass('hidden')
+                	}, 5000);
+            	} else {
+                	$('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
+            	}
+            }
+    })
+}
+
 function map_events() {
     map.on('pointermove', function(evt) {
         if (evt.dragging) {
@@ -806,7 +874,7 @@ function map_events() {
             });
         } else if (model === 'HIWAT-RAPID') {
             var hit = map.forEachFeatureAtPixel(pixel, function(feature, layer) {
-                if (layer == feature_layer) {
+                if (layer == feature_layer || layer == feature_layer2) {
                     current_feature = feature;
                     return true;
                 }
@@ -821,7 +889,7 @@ function map_events() {
 
         if (map.getTargetElement().style.cursor == "pointer") {
             $("#graph").modal('show');
-            $("#tbody").empty()
+            $("#tbody").empty();
             $('#long-term-chart').addClass('hidden');
             $('#historical-chart').addClass('hidden');
             $('#fdc-chart').addClass('hidden');
@@ -890,18 +958,51 @@ function map_events() {
 
                 add_feature(model, workspace, comid);
             } else if (model === 'HIWAT-RAPID') {
-                var comid = current_feature.get('COMID');
-                var watershed = $('#watershedSelect option:selected').val().split('-')[0]
-                var subbasin = $('#watershedSelect option:selected').val().split('-')[1]
 
-                get_time_series(model, watershed, subbasin, comid);
+                // if (current_layer["H"]["source"]["i"]["LAYERS"] == "fews_stations") {
+                //
+                //     $("#obsgraph").modal('show');
+                //     $('#observed-chart-Q').addClass('hidden');
+                //     $('#observed-chart-WL').addClass('hidden');
+                //     $('#obsdates').addClass('hidden');
+                //     $('#observed-loading-Q').removeClass('hidden');
+                //     $('#observed-loading-WL').removeClass('hidden');
+                //     $("#station-info").empty()
+                //     $('#download_observed_discharge').addClass('hidden');
+                //     $('#download_sensor_discharge').addClass('hidden');
+                //     $('#download_observed_waterlevel').addClass('hidden');
+                //     $('#download_sensor_waterlevel').addClass('hidden');
+                //
+                //     $.ajax({
+                //         type: "GET",
+                //         url: wms_url,
+                //         dataType: 'json',
+                //         success: function (result) {
+                //             stationcode = result["features"][0]["properties"]["id"];
+                //             stationname = result["features"][0]["properties"]["nombre"];
+                //             $('#obsdates').removeClass('hidden');
+                //             var startdateobs = $('#startdateobs').val();
+                //             var enddateobs = $('#enddateobs').val();
+                //             $("#station-info").append('<h3>Current Station: ' + stationname + '</h3><h5>Station Code: ' + stationcode);
+                //             get_discharge_info(stationcode, stationname, startdateobs, enddateobs);
+                //         }
+                //     });
+                //
+                // }
+                // else {
+                    var comid = current_feature.get('COMID');
+                    var watershed = $('#watershedSelect option:selected').val().split('-')[0]
+                    var subbasin = $('#watershedSelect option:selected').val().split('-')[1]
 
-                $('#info').addClass('hidden');
-                var workspace = [watershed, subbasin];
+                    get_time_series(model, watershed, subbasin, comid);
 
-                add_feature(model, workspace, comid);
+                    $('#info').addClass('hidden');
+                    var workspace = [watershed, subbasin];
+
+                    add_feature(model, workspace, comid);
+                // }
             }
-        };
+        }
     });
 
 }

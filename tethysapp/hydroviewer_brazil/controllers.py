@@ -5,12 +5,12 @@ from django.http import HttpResponse, JsonResponse
 from tethys_sdk.permissions import has_permission
 from tethys_sdk.base import TethysAppBase
 
-
 import os
 import requests
 import json
 import numpy as np
 import netCDF4 as nc
+from bs4 import BeautifulSoup
 
 from osgeo import ogr
 from osgeo import osr
@@ -343,14 +343,40 @@ def hiwat(request):
                                    initial=json.dumps([geoserver_base_url, geoserver_workspace, region, extra_feature]),
                                    name='geoserver_endpoint',
                                    disabled=True)
-
+    today = dt.datetime.now()
+    year = str(today.year)
+    month = str(today.strftime("%m"))
+    day = str(today.strftime("%d"))
+    date = day + '/' + month + '/' + year
+    lastyear = int(year) - 1
+    date2 = day + '/' + month + '/' + str(lastyear)
+    startdateobs = DatePicker(name='startdateobs',
+                              display_text='Start Date',
+                              autoclose=True,
+                              format='dd/mm/yyyy',
+                              start_date='01/01/1950',
+                              start_view='month',
+                              today_button=True,
+                              initial=date2,
+                              classes='datepicker')
+    enddateobs = DatePicker(name='enddateobs',
+                            display_text='End Date',
+                            autoclose=True,
+                            format='dd/mm/yyyy',
+                            start_date='01/01/1950',
+                            start_view='month',
+                            today_button=True,
+                            initial=date,
+                            classes='datepicker')
     context = {
         "base_name": base_name,
         "model_input": model_input,
         "watershed_select": watershed_select,
         "zoom_info": zoom_info,
         "geoserver_endpoint": geoserver_endpoint,
-        "defaultUpdateButton":defaultUpdateButton
+        "defaultUpdateButton":defaultUpdateButton,
+        "startdateobs": startdateobs,
+        "enddateobs": enddateobs
     }
 
     return render(request, '{0}/hiwat.html'.format(base_name), context)
@@ -1507,3 +1533,64 @@ def forecastpercent(request):
                          'twenty': formattedtwenty}
 
         return JsonResponse(dataformatted)
+
+def get_discharge_data(request):
+    """
+        Get data from fews stations
+    """
+    get_data = request.GET
+
+    try:
+
+        codEstacao = get_data['stationcode']
+        dataInicio = '14/08/2018'
+        dataFim = '21/08/2018'
+
+        url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
+
+        response = requests.get(url)
+
+        soup = BeautifulSoup(response.content, "xml")
+
+        times = soup.find_all('DataHora')
+        values = soup.find_all('Vazao')
+
+        dates = []
+        flows = []
+
+        for time in times:
+            dates.append(dt.datetime.strptime(time.get_text().strip(), "%Y-%m-%d %H:%M:%S"))
+
+        for value in values:
+            flows.append(float(value.get_text().strip()))
+
+        observed_flows = flows[::-1]
+        observed_dates = dates[::-1]
+
+        observed_Q = go.Scatter(
+            x=observed_dates,
+            y=observed_flows,
+        )
+
+        layout = go.Layout(title='Observed Discharge',
+                           xaxis=dict(
+                               title='Dates', ),
+                           yaxis=dict(
+                               title='Discharge (m3/s)',
+                               autorange=True),
+                           showlegend=False)
+
+        chart_obj = PlotlyView(
+            go.Figure(data=[observed_Q],
+                      layout=layout)
+        )
+
+        context = {
+            'gizmo_object': chart_obj,
+        }
+
+        return render(request, '{0}/gizmo_ajax.html'.format(base_name), context)
+
+    except Exception as e:
+        print str(e)
+        return JsonResponse({'error': 'No  data found for the station.'})
