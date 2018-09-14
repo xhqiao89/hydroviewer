@@ -280,6 +280,6 @@ class Hydroviewer(TethysAppBase):
                 name='cosmo_path',
                 type=CustomSetting.TYPE_STRING,
                 description='Path to local COSMO-RAPID directory',
-                required=True
+                required=False
             ),
         )
