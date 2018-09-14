@@ -345,7 +345,7 @@ function view_watershed() {
             }
         });
 
-    } else if ($('#model option:selected').text() === 'HIWAT-RAPID' && $('#watershedSelect option:selected').val() !== "") {
+    } else if ($('#model option:selected').text() === 'COSMO-RAPID' && $('#watershedSelect option:selected').val() !== "") {
         $("#watershed-info").empty();
 
         $('#dates').addClass('hidden');
@@ -360,7 +360,7 @@ function view_watershed() {
         var layerName = workspace + ':' + watershed + '-' + subbasin + '-drainage_line';
         $.ajax({
             type: 'GET',
-            url: 'get-hiwat-shp/',
+            url: 'get-cosmo-shp/',
             dataType: 'json',
             data: {
                 'model': model,
@@ -940,7 +940,7 @@ function map_events() {
                     return true;
                 }
             });
-        } else if (model === 'HIWAT-RAPID') {
+        } else if (model === 'COSMO-RAPID') {
             var hit = map.forEachFeatureAtPixel(pixel, function(feature, layer) {
                 if (layer == feature_layer || layer == feature_layer2) {
                     current_feature = feature;
@@ -1019,7 +1019,7 @@ function map_events() {
                 var workspace = [watershed, subbasin];
 
                 add_feature(model, workspace, comid);
-            } else if (model === 'HIWAT-RAPID') {
+            } else if (model === 'COSMO-RAPID') {
 
                 if (current_layer["H"]["id"] == "brazil_gages") {
 
@@ -1136,11 +1136,11 @@ function add_feature(model, workspace, comid) {
             }
         });
 
-    } else if (model === 'HIWAT-RAPID') {
+    } else if (model === 'COSMO-RAPID') {
         var vectorSource;
         $.ajax({
             type: 'GET',
-            url: 'get-hiwat-shp/',
+            url: 'get-cosmo-shp/',
             dataType: 'json',
             data: {
                 'model': model,
@@ -1180,16 +1180,16 @@ function submit_model() {
     $('#model').on('change', function() {
         var base_path = location.pathname;
 
-        if (base_path.includes('ecmwf-rapid') || base_path.includes('lis-rapid') || base_path.includes('hiwat-rapid')) {
-            base_path = base_path.replace('/ecmwf-rapid', '').replace('/lis-rapid', '').replace('/hiwat-rapid', '');
+        if (base_path.includes('ecmwf-rapid') || base_path.includes('lis-rapid') || base_path.includes('cosmo-rapid')) {
+            base_path = base_path.replace('/ecmwf-rapid', '').replace('/lis-rapid', '').replace('/cosmo-rapid', '');
         }
 
         if ($('#model option:selected').val() === 'ecmwf') {
             location.href = 'http://' + location.host + base_path + 'ecmwf-rapid/?model=ECMWF-RAPID';
         } else if ($('#model option:selected').val() === 'lis') {
             location.href = 'http://' + location.host + base_path + 'lis-rapid/?model=LIS-RAPID';
-        } else if ($('#model option:selected').val() === 'hiwat') {
-            location.href = 'http://' + location.host + base_path + 'hiwat-rapid/?model=HIWAT-RAPID';
+        } else if ($('#model option:selected').val() === 'cosmo') {
+            location.href = 'http://' + location.host + base_path + 'cosmo-rapid/?model=COSMO-RAPID';
         } else {
             location.href = 'http://' + location.host + base_path;
         }

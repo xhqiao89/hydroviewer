@@ -35,9 +35,9 @@ class Hydroviewer(TethysAppBase):
                 url='lis-rapid',
                 controller='{0}.controllers.lis'.format(base_name)),
             UrlMap(
-                name='hiwat',
-                url='hiwat-rapid',
-                controller='{0}.controllers.hiwat'.format(base_name)),
+                name='cosmo',
+                url='cosmo-rapid',
+                controller='{0}.controllers.cosmo'.format(base_name)),
             UrlMap(
                 name='get-available-dates',
                 url='get-available-dates',
@@ -60,8 +60,8 @@ class Hydroviewer(TethysAppBase):
                 controller='{0}.controllers.lis_get_time_series'.format(base_name)),
             UrlMap(
                 name='get-time-series',
-                url='hiwat-rapid/get-time-series',
-                controller='{0}.controllers.hiwat_get_time_series'.format(base_name)),
+                url='cosmo-rapid/get-time-series',
+                controller='{0}.controllers.cosmo_get_time_series'.format(base_name)),
             UrlMap(
                 name='get-return-periods',
                 url='get-return-periods',
@@ -116,8 +116,8 @@ class Hydroviewer(TethysAppBase):
                 controller='{0}.controllers.get_lis_data_csv'.format(base_name)),
             UrlMap(
                 name='get_forecast_data_csv',
-                url='hiwat-rapid/get-forecast-data-csv',
-                controller='{0}.controllers.get_hiwat_data_csv'.format(base_name)),
+                url='cosmo-rapid/get-forecast-data-csv',
+                controller='{0}.controllers.get_cosmo_data_csv'.format(base_name)),
             UrlMap(
                 name='get_forecast_data_csv',
                 url='get-forecast-data-csv',
@@ -131,12 +131,12 @@ class Hydroviewer(TethysAppBase):
                 url='lis-rapid/get-lis-shp',
                 controller='{0}.controllers.shp_to_geojson'.format(base_name)),
             UrlMap(
-                name='get_hiwat_shp',
-                url='get-hiwat-shp',
+                name='get_cosmo_shp',
+                url='get-cosmo-shp',
                 controller='{0}.controllers.shp_to_geojson'.format(base_name)),
             UrlMap(
-                name='get_hiwat_shp',
-                url='hiwat-rapid/get-hiwat-shp',
+                name='get_cosmo_shp',
+                url='cosmo-rapid/get-cosmo-shp',
                 controller='{0}.controllers.shp_to_geojson'.format(base_name)),
             UrlMap(
                 name='set_def_ws',
@@ -160,19 +160,19 @@ class Hydroviewer(TethysAppBase):
                 controller='{0}.controllers.forecastpercent'.format(base_name)),
             UrlMap(
                 name='get_discharge_data',
-                url='hiwat-rapid/get-discharge-data',
+                url='cosmo-rapid/get-discharge-data',
                 controller='{0}.controllers.get_discharge_data'.format(base_name)),
             UrlMap(
                 name='get_waterlevel_data',
-                url='hiwat-rapid/get-waterlevel-data',
+                url='cosmo-rapid/get-waterlevel-data',
                 controller='{0}.controllers.get_waterlevel_data'.format(base_name)),
             UrlMap(
                 name='get_observed_discharge_csv',
-                url='hiwat-rapid/get-observed-discharge-csv',
+                url='cosmo-rapid/get-observed-discharge-csv',
                 controller='{0}.controllers.get_observed_discharge_csv'.format(base_name)),
             UrlMap(
                 name='get_observed_waterlevel_csv',
-                url='hiwat-rapid/get-observed-waterlevel-csv',
+                url='cosmo-rapid/get-observed-waterlevel-csv',
                 controller='{0}.controllers.get_observed_waterlevel_csv'.format(base_name)),
         )
 
@@ -248,7 +248,7 @@ class Hydroviewer(TethysAppBase):
             CustomSetting(
                 name='default_model_type',
                 type=CustomSetting.TYPE_STRING,
-                description='Default Model Type : (Options : ECMWF-RAPID, LIS-RAPID, HIWAT-RAPID)',
+                description='Default Model Type : (Options : ECMWF-RAPID, LIS-RAPID, COSMO-RAPID)',
                 required=False
             ),
             CustomSetting(
@@ -275,5 +275,11 @@ class Hydroviewer(TethysAppBase):
                 type=CustomSetting.TYPE_STRING,
                 description='Path to local HIWAT-RAPID directory',
                 required=False
+            ),
+            CustomSetting(
+                name='cosmo_path',
+                type=CustomSetting.TYPE_STRING,
+                description='Path to local COSMO-RAPID directory',
+                required=True
             ),
         )

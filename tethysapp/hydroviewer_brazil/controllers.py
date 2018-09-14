@@ -57,7 +57,7 @@ def home_standard(request):
     model_input = SelectInput(display_text='',
                               name='model',
                               multiple=False,
-                              options=[('Select Model', ''), ('HIWAT-RAPID', 'hiwat')],
+                              options=[('Select Model', ''), ('COSMO-RAPID', 'cosmo')],
                               initial=['Select Model'],
                               original=True)
 
@@ -116,7 +116,7 @@ def ecmwf(request):
     model_input = SelectInput(display_text='',
                               name='model',
                               multiple=False,
-                              options=[('Select Model', ''), ('ECMWF-RAPID', 'ecmwf'), ('LIS-RAPID', 'lis'), ('HIWAT-RAPID', 'hiwat')],
+                              options=[('Select Model', ''), ('ECMWF-RAPID', 'ecmwf'), ('LIS-RAPID', 'lis'), ('COSMO-RAPID', 'cosmo')],
                               initial=[init_model_val],
                               classes = hiddenAttr,
                               original=True)
@@ -216,7 +216,7 @@ def lis(request):
     model_input = SelectInput(display_text='',
                               name='model',
                               multiple=False,
-                              options=[('Select Model', ''), ('ECMWF-RAPID', 'ecmwf'), ('LIS-RAPID', 'lis'), ('HIWAT-RAPID', 'hiwat')],
+                              options=[('Select Model', ''), ('ECMWF-RAPID', 'ecmwf'), ('LIS-RAPID', 'lis'), ('COSMO-RAPID', 'cosmo')],
                               initial=[init_model_val],
                               classes = hiddenAttr,
                               original=True)
@@ -271,7 +271,7 @@ def lis(request):
     return render(request, '{0}/lis.html'.format(base_name), context)
 
 
-def hiwat(request):
+def cosmo(request):
 
     #Can Set Default permissions : Only allowed for admin users
     can_update_default = has_permission(request, 'update_default')
@@ -301,15 +301,15 @@ def hiwat(request):
     model_input = SelectInput(display_text='',
                               name='model',
                               multiple=False,
-                              options=[('Select Model', ''), ('HIWAT-RAPID', 'hiwat')],
+                              options=[('Select Model', ''), ('COSMO-RAPID', 'cosmo')],
                               initial=[init_model_val],
                               classes = hiddenAttr,
                               original=True)
 
     watershed_list = [['Select Watershed', '']]
 
-    if app.get_custom_setting('hiwat_path'):
-        res = os.listdir(app.get_custom_setting('hiwat_path'))
+    if app.get_custom_setting('cosmo_path'):
+        res = os.listdir(app.get_custom_setting('cosmo_path'))
 
         for i in res:
             feat_name = i.split('-')[0].replace('_', ' ').title() + ' (' + \
@@ -318,7 +318,7 @@ def hiwat(request):
                 watershed_list.append([feat_name, i])
 
     # Add the default WS if present and not already in the list
-    if default_model == 'HIWAT-RAPID' and init_ws_val and init_ws_val not in str(watershed_list):
+    if default_model == 'COSMO-RAPID' and init_ws_val and init_ws_val not in str(watershed_list):
         watershed_list.append([init_ws_val, init_ws_val])
 
     watershed_select = SelectInput(display_text='',
@@ -353,7 +353,7 @@ def hiwat(request):
         "defaultUpdateButton":defaultUpdateButton
     }
 
-    return render(request, '{0}/hiwat.html'.format(base_name), context)
+    return render(request, '{0}/cosmo.html'.format(base_name), context)
 
 
 def get_warning_points(request):
@@ -565,8 +565,8 @@ def get_time_series(request):
         return ecmwf_get_time_series(request)
     elif request.GET['model'] == 'LIS-RAPID':
         return lis_get_time_series(request)
-    elif request.GET['model'] == 'HIWAT-RAPID':
-        return hiwat_get_time_series(request)
+    elif request.GET['model'] == 'COSMO-RAPID':
+        return cosmo_get_time_series(request)
 
 def lis_get_time_series(request):
     get_data = request.GET
@@ -631,7 +631,7 @@ def lis_get_time_series(request):
         return JsonResponse({'error': 'No LIS data found for the selected reach.'})
 
 
-def hiwat_get_time_series(request):
+def cosmo_get_time_series(request):
     get_data = request.GET
 
     try:
@@ -641,9 +641,9 @@ def hiwat_get_time_series(request):
         comid = get_data['comid']
         units = 'metric'
 
-        path = os.path.join(app.get_custom_setting('hiwat_path'), '-'.join([watershed, subbasin]))
+        path = os.path.join(app.get_custom_setting('cosmo_path'), '-'.join([watershed, subbasin]))
         filename = [f for f in os.listdir(path) if 'Qout' in f]
-        res = nc.Dataset(os.path.join(app.get_custom_setting('hiwat_path'), '-'.join([watershed, subbasin]), filename[0]), 'r')
+        res = nc.Dataset(os.path.join(app.get_custom_setting('cosmo_path'), '-'.join([watershed, subbasin]), filename[0]), 'r')
 
         dates_raw = res.variables['time'][:]
         dates = []
@@ -661,13 +661,13 @@ def hiwat_get_time_series(request):
         # Chart Section
         # --------------------------------------
         series = go.Scatter(
-            name='HIWAT',
+            name='COSMO',
             x=dates,
             y=values,
         )
 
         layout = go.Layout(
-            title="HIWAT Streamflow<br><sub>{0} ({1}): {2}</sub>".format(
+            title="COSMO Streamflow<br><sub>{0} ({1}): {2}</sub>".format(
                 watershed, subbasin, comid),
             xaxis=dict(
                 title='Date',
@@ -691,7 +691,7 @@ def hiwat_get_time_series(request):
 
     except Exception as e:
         print str(e)
-        return JsonResponse({'error': 'No HIWAT data found for the selected reach.'})
+        return JsonResponse({'error': 'No COSMO data found for the selected reach.'})
 
 
 def get_available_dates(request):
@@ -1115,9 +1115,9 @@ def get_lis_data_csv(request):
         return JsonResponse({'error': 'No forecast data found.'})
 
 
-def get_hiwat_data_csv(request):
+def get_cosmo_data_csv(request):
     """""
-    Returns HIWAT data as csv
+    Returns COSMO data as csv
     """""
 
     get_data = request.GET
@@ -1132,9 +1132,9 @@ def get_hiwat_data_csv(request):
         else:
             startdate = 'most_recent'
 
-        path = os.path.join(app.get_custom_setting('hiwat_path'), '-'.join([watershed, subbasin]))
+        path = os.path.join(app.get_custom_setting('cosmo_path'), '-'.join([watershed, subbasin]))
         filename = [f for f in os.listdir(path) if 'Qout' in f]
-        res = nc.Dataset(os.path.join(app.get_custom_setting('hiwat_path'), '-'.join([watershed, subbasin]), filename[0]), 'r')
+        res = nc.Dataset(os.path.join(app.get_custom_setting('cosmo_path'), '-'.join([watershed, subbasin]), filename[0]), 'r')
 
         dates_raw = res.variables['time'][:]
         dates = []
@@ -1152,7 +1152,7 @@ def get_hiwat_data_csv(request):
 
         init_time = pairs[0][0].split(' ')[0]
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=hiwat_streamflow_{0}_{1}_{2}_{3}.csv'.format(watershed,
+        response['Content-Disposition'] = 'attachment; filename=cosmo_streamflow_{0}_{1}_{2}_{3}.csv'.format(watershed,
                                                                                                              subbasin,
                                                                                                              comid,
                                                                                                              init_time)
@@ -1186,9 +1186,9 @@ def shp_to_geojson(request):
                     '-'.join([watershed, subbasin, 'drainage_line']).replace(' ', '_'),
                     '-'.join([watershed, subbasin, 'drainage_line', '3857.shp']).replace(' ', '_')
             )
-        elif model == 'HIWAT-RAPID':
+        elif model == 'COSMO-RAPID':
             reprojected_shp_path = os.path.join(
-                    app.get_custom_setting('hiwat_path'),
+                    app.get_custom_setting('cosmo_path'),
                     '-'.join([watershed, subbasin]).replace(' ', '_'),
                     '-'.join([watershed, subbasin, 'drainage_line']).replace(' ', '_'),
                     '-'.join([watershed, subbasin, 'drainage_line', '3857.shp']).replace(' ', '_')
