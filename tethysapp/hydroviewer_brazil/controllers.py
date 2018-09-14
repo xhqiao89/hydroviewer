@@ -57,7 +57,7 @@ def home_standard(request):
     model_input = SelectInput(display_text='',
                               name='model',
                               multiple=False,
-                              options=[('Select Model', ''), ('ECMWF-RAPID', 'ecmwf'), ('LIS-RAPID', 'lis'), ('HIWAT-RAPID', 'hiwat')],
+                              options=[('Select Model', ''), ('HIWAT-RAPID', 'hiwat')],
                               initial=['Select Model'],
                               original=True)
 
@@ -301,7 +301,7 @@ def hiwat(request):
     model_input = SelectInput(display_text='',
                               name='model',
                               multiple=False,
-                              options=[('Select Model', ''), ('ECMWF-RAPID', 'ecmwf'), ('LIS-RAPID', 'lis'), ('HIWAT-RAPID', 'hiwat')],
+                              options=[('Select Model', ''), ('HIWAT-RAPID', 'hiwat')],
                               initial=[init_model_val],
                               classes = hiddenAttr,
                               original=True)
@@ -1415,6 +1415,10 @@ def forecastpercent(request):
 
         return JsonResponse(dataformatted)
 
+observed_flows = []
+observed_dates = []
+observed_wls =[]
+
 def get_discharge_data(request):
     """
         Get data from brazil gages
@@ -1558,40 +1562,9 @@ def get_observed_discharge_csv(request):
     try:
 
         codEstacao = get_data['stationcode']
-        nomEstacao = get_data['stationname']
-
-        today = dt.datetime.now()
-        year = str(today.year)
-        month = str(today.strftime("%m"))
-        day = str(today.strftime("%d"))
-        dataFim = day + '/' + month + '/' + year
-        lastmonth = int(month) - 1
-        dataInicio = day + '/' + str(lastmonth) + '/' + year
-
-        url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
-
-        response = requests.get(url)
-
-        soup = BeautifulSoup(response.content, "xml")
-
-        times = soup.find_all('DataHora')
-        values = soup.find_all('Vazao')
-
-        dates = []
-        flows = []
-
-        for time in times:
-            dates.append(dt.datetime.strptime(time.get_text().strip(), "%Y-%m-%d %H:%M:%S"))
-
-        for value in values:
-            flows.append(float(value.get_text().strip()))
-
-        observed_flows = flows[::-1]
-        observed_dates = dates[::-1]
-
         pairs = [list(a) for a in zip(observed_dates, observed_flows)]
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=discharge_{0}_{1}.csv'.format(codEstacao, nomEstacao)
+        response['Content-Disposition'] = 'attachment; filename=discharge_{0}.csv'.format(codEstacao)
         writer = csv_writer(response)
         writer.writerow(['datetime', 'flow (m3/s)'])
         for row_data in pairs:
@@ -1611,41 +1584,10 @@ def get_observed_waterlevel_csv(request):
     try:
 
         codEstacao = get_data['stationcode']
-        nomEstacao = get_data['stationname']
-
-        today = dt.datetime.now()
-        year = str(today.year)
-        month = str(today.strftime("%m"))
-        day = str(today.strftime("%d"))
-        dataFim = day + '/' + month + '/' + year
-        lastmonth = int(month) - 1
-        dataInicio = day + '/' + str(lastmonth) + '/' + year
-
-        url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
-
-        response = requests.get(url)
-
-        soup = BeautifulSoup(response.content, "xml")
-
-        times = soup.find_all('DataHora')
-        values = soup.find_all('Nivel')
-
-        dates = []
-        waterlevels = []
-
-        for time in times:
-            dates.append(dt.datetime.strptime(time.get_text().strip(), "%Y-%m-%d %H:%M:%S"))
-
-        for value in values:
-            waterlevels.append(float(value.get_text().strip()))
-
-        observed_wls = waterlevels[::-1]
-        observed_dates = dates[::-1]
-
         pairs = [list(a) for a in zip(observed_dates, observed_wls)]
 
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=waterlevel_{0}_{1}.csv'.format(codEstacao, nomEstacao)
+        response['Content-Disposition'] = 'attachment; filename=waterlevel_{0}.csv'.format(codEstacao)
         writer = csv_writer(response)
         writer.writerow(['datetime', 'waterlevel (m)'])
         for row_data in pairs:
