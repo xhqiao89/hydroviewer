@@ -408,7 +408,7 @@ function view_watershed() {
                     id: 'brazil_gages',
                     source: new ol.source.Vector({
                         projection: 'EPSG:3857',
-                        url: '/static/hydroviewer_brazil/JSON/brazil_gages.json',
+                        url: '/static/hydroviewer_brazil/JSON/gages_to_streams.json',
                         format: new ol.format.GeoJSON()
                     }),
                     style: pointStyle
@@ -816,12 +816,16 @@ function get_forecast_percent(watershed, subbasin, comid, startdate) {
     })
 }
 
-function get_discharge_info (stationcode, stationname) {
+function get_discharge_info (stationcode, stationname, stream_comid, watershed, subbasin) {
     $('#observed-loading-Q').removeClass('hidden');
     $.ajax({
         url: 'get-discharge-data/',
         type: 'GET',
-        data: {'stationcode' : stationcode, 'stationname' : stationname},
+        data: {'stationcode' : stationcode,
+            'stationname' : stationname,
+            'stream_comid': stream_comid,
+            'watershed': watershed,
+            'subbasin': subbasin},
         error: function () {
             $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Discharge Data</strong></p>');
             $('#info').removeClass('hidden');
@@ -966,7 +970,6 @@ function map_events() {
 
                 if (wms_url) {
                     $loading.removeClass('hidden');
-                    //Retrieving the details for clicked point via the url
                     $('#dates').addClass('hidden');
                     //$('#plot').addClass('hidden');
                     $.ajax({
@@ -1028,19 +1031,23 @@ function map_events() {
                     $('#observed-chart-WL').addClass('hidden');
                     $('#observed-loading-Q').removeClass('hidden');
                     $('#observed-loading-WL').removeClass('hidden');
-                    $("#station-info").empty()
+                    $("#station-info").empty();
                     $('#download_observed_discharge').addClass('hidden');
                     $('#download_sensor_discharge').addClass('hidden');
                     $('#download_observed_waterlevel').addClass('hidden');
                     $('#download_sensor_waterlevel').addClass('hidden');
 
-
                     stationcode = current_feature.H.codEstacao;
                     stationname = current_feature.H.NomeEstaca;
-                    var startdateobs = $('#startdateobs').val();
-                    var enddateobs = $('#enddateobs').val();
+                    var stream_comid = current_feature.H.COMID;
+                    var watershed = $('#watershedSelect option:selected').val().split('-')[0];
+                    var subbasin = $('#watershedSelect option:selected').val().split('-')[1];
+
+                    var cosmo_data = get_time_series(model, watershed, subbasin, stream_comid);
+
+
                     $("#station-info").append('<h3>Current Station: ' + stationname + '</h3><h5>Station Code: ' + stationcode);
-                    get_discharge_info(stationcode, stationname);
+                    get_discharge_info(stationcode, stationname, stream_comid, watershed, subbasin);
                     get_waterlevel_info(stationcode, stationname);
                 }
                 else {
@@ -1054,8 +1061,8 @@ function map_events() {
                     $('#download_interim').addClass('hidden');
 
                     var comid = current_feature.get('COMID');
-                    var watershed = $('#watershedSelect option:selected').val().split('-')[0]
-                    var subbasin = $('#watershedSelect option:selected').val().split('-')[1]
+                    var watershed = $('#watershedSelect option:selected').val().split('-')[0];
+                    var subbasin = $('#watershedSelect option:selected').val().split('-')[1];
 
                     get_time_series(model, watershed, subbasin, comid);
 

@@ -390,6 +390,50 @@ def get_warning_points(request):
     else:
         pass
 
+def _ecmwf_get_ts(watershed, subbasin, comid, startdate):
+
+    res = requests.get(
+        app.get_custom_setting('api_source') + '/apps/streamflow-prediction-tool/api/GetForecast/?watershed_name=' +
+        watershed + '&subbasin_name=' + subbasin + '&reach_id=' + comid + '&forecast_folder=' +
+        startdate + '&return_format=csv',
+        headers={'Authorization': 'Token ' + app.get_custom_setting('spt_token')}, verify=False)
+
+    pairs = res.content.splitlines()
+    header = pairs.pop(0)
+
+    dates = []
+    hres_dates = []
+
+    mean_values = []
+    hres_values = []
+    min_values = []
+    max_values = []
+    std_dev_lower_values = []
+    std_dev_upper_values = []
+
+    for pair in pairs:
+        if 'high_res' in header:
+            hres_dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+            hres_values.append(float(pair.split(',')[1]))
+
+            if 'nan' not in pair:
+                dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+                max_values.append(float(pair.split(',')[2]))
+                mean_values.append(float(pair.split(',')[3]))
+                min_values.append(float(pair.split(',')[4]))
+                std_dev_lower_values.append(float(pair.split(',')[5]))
+                std_dev_upper_values.append(float(pair.split(',')[6]))
+
+        else:
+            dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+            max_values.append(float(pair.split(',')[1]))
+            mean_values.append(float(pair.split(',')[2]))
+            min_values.append(float(pair.split(',')[3]))
+            std_dev_lower_values.append(float(pair.split(',')[4]))
+            std_dev_upper_values.append(float(pair.split(',')[5]))
+
+    return dates, hres_dates, mean_values, hres_values, min_values, max_values, std_dev_lower_values, std_dev_upper_values
+
 
 def ecmwf_get_time_series(request):
     get_data = request.GET
@@ -631,6 +675,26 @@ def lis_get_time_series(request):
         return JsonResponse({'error': 'No LIS data found for the selected reach.'})
 
 
+def _read_cosmo_ts_from_nc(watershed, subbasin, comid):
+    path = os.path.join(app.get_custom_setting('cosmo_path'), '-'.join([watershed, subbasin]))
+    filename = [f for f in os.listdir(path) if 'Qout' in f]
+    res = nc.Dataset(os.path.join(app.get_custom_setting('cosmo_path'), '-'.join([watershed, subbasin]), filename[0]),
+                     'r')
+
+    dates_raw = res.variables['time'][:]
+    dates = []
+    for d in dates_raw:
+        dates.append(dt.datetime.fromtimestamp(d))
+
+    comid_list = res.variables['rivid'][:]
+    comid_index = int(np.where(comid_list == int(comid))[0])
+
+    values = []
+    for l in list(res.variables['Qout'][:]):
+        values.append(float(l[comid_index]))
+
+    return dates, values
+
 def cosmo_get_time_series(request):
     get_data = request.GET
 
@@ -641,21 +705,7 @@ def cosmo_get_time_series(request):
         comid = get_data['comid']
         units = 'metric'
 
-        path = os.path.join(app.get_custom_setting('cosmo_path'), '-'.join([watershed, subbasin]))
-        filename = [f for f in os.listdir(path) if 'Qout' in f]
-        res = nc.Dataset(os.path.join(app.get_custom_setting('cosmo_path'), '-'.join([watershed, subbasin]), filename[0]), 'r')
-
-        dates_raw = res.variables['time'][:]
-        dates = []
-        for d in dates_raw:
-            dates.append(dt.datetime.fromtimestamp(d))
-
-        comid_list = res.variables['rivid'][:]
-        comid_index = int(np.where(comid_list == int(comid))[0])
-
-        values = []
-        for l in list(res.variables['Qout'][:]):
-            values.append(float(l[comid_index]))
+        dates, values = _read_cosmo_ts_from_nc(watershed, subbasin, comid)
 
         # --------------------------------------
         # Chart Section
@@ -1433,9 +1483,15 @@ def get_discharge_data(request):
         year = str(today.year)
         month = str(today.strftime("%m"))
         day = str(today.strftime("%d"))
+
+        yesterday = today - dt.timedelta(days=1)
+        yesterday_year = str(yesterday.year)
+        yesterday_month = str(yesterday.strftime("%m"))
+        yesterday_day = str(yesterday.strftime("%d"))
         dataFim = day + '/' + month + '/' + year
-        lastmonth = int(month) - 1
-        dataInicio = day + '/' + str(lastmonth) + '/' + year
+        # lastmonth = int(month) - 1
+        # dataInicio = day + '/' + str(lastmonth) + '/' + year
+        dataInicio = '21/08/2018'
 
         url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
 
@@ -1453,17 +1509,48 @@ def get_discharge_data(request):
             dates.append(dt.datetime.strptime(time.get_text().strip(), "%Y-%m-%d %H:%M:%S"))
 
         for value in values:
-            flows.append(float(value.get_text().strip()))
+            # flows.append(float(value.get_text().strip()))
+            flows.append(value.get_text().strip())
 
         observed_flows = flows[::-1]
         observed_dates = dates[::-1]
 
         observed_Q = go.Scatter(
+            name='Gage Observation',
             x=observed_dates,
             y=observed_flows,
         )
 
-        layout = go.Layout(title='Observed Discharge',
+        # extract cosmo data from local netcdf
+        watershed = get_data['watershed']
+        subbasin = get_data['subbasin']
+        stream_comid = get_data['stream_comid']
+        units = 'metric'
+
+        cosmo_dates, cosmo_values = _read_cosmo_ts_from_nc(watershed, subbasin, stream_comid)
+
+        cosmo_forecast_Q = go.Scatter(
+            name='COSMO Forecast',
+            x=cosmo_dates,
+            y=cosmo_values,
+        )
+
+        # get ecmwf forecast from API
+
+        startdate = "{year}{month}{day}.0".format(year=yesterday_year,month=yesterday_month, day=yesterday_day)
+        watershed_brail_ecmwf = 'south_america'
+        subbasin_brail_ecmwf = 'continental'
+
+        dates, hres_dates, mean_values, hres_values, min_values, max_values, std_dev_lower_values, std_dev_upper_values = \
+        _ecmwf_get_ts(watershed_brail_ecmwf, subbasin_brail_ecmwf, stream_comid, startdate)
+
+        ecmwf_forecast_mean_Q = go.Scatter(
+            name='ECMWF Mean Forecast',
+            x=dates,
+            y=mean_values,
+        )
+
+        layout = go.Layout(title='Streamflow',
                            xaxis=dict(
                                title='Dates', ),
                            yaxis=dict(
@@ -1471,8 +1558,10 @@ def get_discharge_data(request):
                                autorange=True),
                            showlegend=False)
 
+        # go.Figure(data=[observed_Q, cosmo_forecast_Q, ecmwf_forecast_mean_Q],
+
         chart_obj = PlotlyView(
-            go.Figure(data=[observed_Q],
+            go.Figure(data=[observed_Q, cosmo_forecast_Q,ecmwf_forecast_mean_Q],
                       layout=layout)
         )
 
@@ -1520,7 +1609,7 @@ def get_waterlevel_data(request):
             dates.append(dt.datetime.strptime(time.get_text().strip(), "%Y-%m-%d %H:%M:%S"))
 
         for value in values:
-            waterlevels.append(float(value.get_text().strip()))
+            waterlevels.append(value.get_text().strip())
 
         observed_wls = waterlevels[::-1]
         observed_dates = dates[::-1]
