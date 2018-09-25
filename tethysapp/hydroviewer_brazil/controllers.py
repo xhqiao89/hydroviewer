@@ -11,6 +11,7 @@ import json
 import numpy as np
 import netCDF4 as nc
 from bs4 import BeautifulSoup
+import xarray
 
 from osgeo import ogr
 from osgeo import osr
@@ -1535,7 +1536,45 @@ def get_discharge_data(request):
             y=cosmo_values,
         )
 
-        # get ecmwf forecast from API
+        # get ERA daily average data from local netcdf
+
+        seasonal_data_file = app.get_custom_setting('cosmo_path') + 'brazil-highres/seasonal_averages_erai_t511_24hr_19800101to20141231.nc'
+
+        with xarray.open_dataset(seasonal_data_file) as seasonal_nc:
+            seasonal_data = seasonal_nc.sel(rivid=180906)
+            base_date = dt.datetime.now()-dt.timedelta(days=30)
+
+            # day_of_year = [base_date + dt.timedelta(days=ii)
+            #                for ii in range(seasonal_data.dims['day_of_year'])]
+
+            day_of_year = [base_date + dt.timedelta(days=ii)
+                           for ii in range(40)]
+            season_avg = seasonal_data.average_flow.values
+            season_std = seasonal_data.std_dev_flow.values
+
+            season_avg[season_avg < 0] = 0
+
+            avg_plus_std = season_avg + season_std
+            avg_min_std = season_avg - season_std
+
+            avg_plus_std[avg_plus_std < 0] = 0
+            avg_min_std[avg_min_std < 0] = 0
+
+            avg_plus_std[avg_plus_std < 0] = 0
+            avg_min_std[avg_min_std < 0] = 0
+
+            era_daily_average = go.Scatter(
+                name='ERA Daily Average',
+                x=day_of_year,
+                y=season_avg,
+                line=dict(
+                    color='#0066ff'
+                )
+            )
+
+        seasonal_nc.close()
+
+        #  get ecmwf forecast from API
 
         startdate = "{year}{month}{day}.0".format(year=yesterday_year,month=yesterday_month, day=yesterday_day)
         watershed_brail_ecmwf = 'south_america'
@@ -1561,7 +1600,7 @@ def get_discharge_data(request):
         # go.Figure(data=[observed_Q, cosmo_forecast_Q, ecmwf_forecast_mean_Q],
 
         chart_obj = PlotlyView(
-            go.Figure(data=[observed_Q, cosmo_forecast_Q,ecmwf_forecast_mean_Q],
+            go.Figure(data=[observed_Q, cosmo_forecast_Q, era_daily_average, ecmwf_forecast_mean_Q],
                       layout=layout)
         )
 
@@ -1623,7 +1662,7 @@ def get_waterlevel_data(request):
                            xaxis=dict(
                                title='Dates', ),
                            yaxis=dict(
-                               title='Water Level (m)',
+                               title='Water Level (mm)',
                                autorange=True),
                            showlegend=False)
 
@@ -1678,7 +1717,7 @@ def get_observed_waterlevel_csv(request):
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename=waterlevel_{0}.csv'.format(codEstacao)
         writer = csv_writer(response)
-        writer.writerow(['datetime', 'waterlevel (m)'])
+        writer.writerow(['datetime', 'waterlevel (mm)'])
         for row_data in pairs:
             writer.writerow(row_data)
         return response
