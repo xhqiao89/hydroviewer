@@ -129,6 +129,11 @@
                 <div id="interaction"></div>
             </div>
             <div class="modal-body">
+                 <select id="date_dropdown">
+                     {% for dt_str in model_run_dt_str_list %}
+                         <option value="{{dt_str}}">{{dt_str}}</option>
+                     {% endfor %}
+                 </select>
                 <!-- Nav tabs -->
                 <ul class="nav nav-tabs" role="tablist">
                   <li role="presentation" class="active"><a id="observedQ_tab_link" href="#observedQ" aria-controls="observedQ" role="tab" data-toggle="tab">Observed Discharge</a></li>

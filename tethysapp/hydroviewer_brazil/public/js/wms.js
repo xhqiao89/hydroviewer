@@ -816,8 +816,12 @@ function get_forecast_percent(watershed, subbasin, comid, startdate) {
     })
 }
 
-function get_discharge_info (stationcode, stationname, stream_comid, watershed, subbasin) {
+function get_discharge_info (stationcode, stationname, stream_comid, watershed, subbasin, selected_date=null) {
     $('#observed-loading-Q').removeClass('hidden');
+      $('#observed-chart-Q').addClass('hidden');
+      $('#observed-chart-WL').addClass('hidden');
+      $('#observed-loading-Q').removeClass('hidden');
+      $('#observed-loading-WL').removeClass('hidden');
     $.ajax({
         url: 'get-discharge-data/',
         type: 'GET',
@@ -825,7 +829,8 @@ function get_discharge_info (stationcode, stationname, stream_comid, watershed, 
             'stationname' : stationname,
             'stream_comid': stream_comid,
             'watershed': watershed,
-            'subbasin': subbasin},
+            'subbasin': subbasin,
+        "selected_date":selected_date},
         error: function () {
             $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Discharge Data</strong></p>');
             $('#info').removeClass('hidden');
@@ -1024,9 +1029,20 @@ function map_events() {
                 add_feature(model, workspace, comid);
             } else if (model === 'COSMO-RAPID') {
 
+                // var optionList = ["2018-10-01 00:00", "2018-10-01 12:00", "2018-10-02 00:00"];
+                // var combo =$("#date_dropdown");
+
+                // combo.empty();
+                //
+                // $.each(optionList, function (i, el) {
+                //     var option_content = "<option value='" + el + "'>" + el + "</option>";
+                //     combo.append(option_content);
+                //     });
+
                 if (current_layer["H"]["id"] == "brazil_gages") {
 
                     $("#obsgraph").modal('show');
+                    $('#date_dropdown').get(0).selectedIndex = 0;
                     $('#observed-chart-Q').addClass('hidden');
                     $('#observed-chart-WL').addClass('hidden');
                     $('#observed-loading-Q').removeClass('hidden');
@@ -1043,12 +1059,18 @@ function map_events() {
                     var watershed = $('#watershedSelect option:selected').val().split('-')[0];
                     var subbasin = $('#watershedSelect option:selected').val().split('-')[1];
 
-                    var cosmo_data = get_time_series(model, watershed, subbasin, stream_comid);
-
 
                     $("#station-info").append('<h3>Current Station: ' + stationname + '</h3><h5>Station Code: ' + stationcode);
                     get_discharge_info(stationcode, stationname, stream_comid, watershed, subbasin);
                     get_waterlevel_info(stationcode, stationname);
+
+                    document.getElementById("date_dropdown").onchange = function(){
+                         var date_list=document.getElementById("date_dropdown");
+                         selected_date = date_list[date_list.selectedIndex].value;
+                         get_discharge_info(stationcode, stationname, stream_comid, watershed, subbasin,selected_date);
+                         get_waterlevel_info(stationcode, stationname);
+                    }
+
                 }
                 else {
 

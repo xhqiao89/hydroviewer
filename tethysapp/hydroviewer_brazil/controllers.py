@@ -345,13 +345,32 @@ def cosmo(request):
                                    name='geoserver_endpoint',
                                    disabled=True)
 
+    utc_now = dt.datetime.utcnow()
+    if utc_now.hour > 21:
+        #today 12:00
+        dt_last_model_run = dt.datetime(year=utc_now.year, month=utc_now.month, day=utc_now.day, hour= 12)
+    elif utc_now.hour > 9:
+        #today 00:00
+        dt_last_model_run = dt.datetime(year=utc_now.year, month=utc_now.month, day=utc_now.day, hour=0)
+    else:
+        # yesterday 12:00
+        dt_last_model_run = dt.datetime(year=utc_now.year, month=utc_now.month, day=utc_now.day, hour=12) - dt.timedelta(days=1)
+    td = dt.timedelta(hours=12)
+
+    model_run_dt_list =[dt_last_model_run]
+    for i in range(17):
+        model_run_dt_list.append(model_run_dt_list[-1] - td)
+    model_run_dt_str_list = [dt_str.strftime('%Y-%m-%d %H:%M:%S') for dt_str in model_run_dt_list]
+
+
     context = {
         "base_name": base_name,
         "model_input": model_input,
         "watershed_select": watershed_select,
         "zoom_info": zoom_info,
         "geoserver_endpoint": geoserver_endpoint,
-        "defaultUpdateButton":defaultUpdateButton
+        "defaultUpdateButton":defaultUpdateButton,
+        "model_run_dt_str_list": model_run_dt_str_list
     }
 
     return render(request, '{0}/cosmo.html'.format(base_name), context)
@@ -676,11 +695,17 @@ def lis_get_time_series(request):
         return JsonResponse({'error': 'No LIS data found for the selected reach.'})
 
 
-def _read_cosmo_ts_from_nc(watershed, subbasin, comid):
+def _read_cosmo_ts_from_nc(watershed, subbasin, comid, selected_dt=None):
     path = os.path.join(app.get_custom_setting('cosmo_path'), '-'.join([watershed, subbasin]))
-    filename = [f for f in os.listdir(path) if 'Qout' in f]
+    if selected_dt is None:
+        filename = [f for f in os.listdir(path) if 'Qout' in f]
+
+    else:
+        filename = [f for f in os.listdir(path) if selected_dt.strftime("%Y%m%d%H") in f]
+
+    filename.sort(reverse=True)
     res = nc.Dataset(os.path.join(app.get_custom_setting('cosmo_path'), '-'.join([watershed, subbasin]), filename[0]),
-                     'r')
+                         'r')
 
     dates_raw = res.variables['time'][:]
     dates = []
@@ -1475,25 +1500,29 @@ def get_discharge_data(request):
         Get data from brazil gages
     """
     get_data = request.GET
+    selected_dt_str = get_data['selected_date']
+    selected_dt = None
+    if selected_dt_str:
+        selected_dt = dt.datetime.strptime(selected_dt_str, "%Y-%m-%d %H:%M:%S")
 
     try:
 
         codEstacao = get_data['stationcode']
 
-        today = dt.datetime.now()
-        year = str(today.year)
-        month = str(today.strftime("%m"))
-        day = str(today.strftime("%d"))
+        utc_now = dt.datetime.utcnow()
+        year = str(utc_now.year)
+        month = str(utc_now.strftime("%m"))
+        day = str(utc_now.strftime("%d"))
 
-        yesterday = today - dt.timedelta(days=1)
+        yesterday = utc_now - dt.timedelta(days=1)
         yesterday_year = str(yesterday.year)
         yesterday_month = str(yesterday.strftime("%m"))
         yesterday_day = str(yesterday.strftime("%d"))
         dataFim = day + '/' + month + '/' + year
-        # lastmonth = int(month) - 1
-        # dataInicio = day + '/' + str(lastmonth) + '/' + year
-        dataInicio = '21/08/2018'
-
+        lastmonth = int(month) - 1
+        dataInicio = day + '/' + str(lastmonth) + '/' + year
+        # dataInicio = '21/08/2018'
+        #
         url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
 
         response = requests.get(url)
@@ -1528,7 +1557,7 @@ def get_discharge_data(request):
         stream_comid = get_data['stream_comid']
         units = 'metric'
 
-        cosmo_dates, cosmo_values = _read_cosmo_ts_from_nc(watershed, subbasin, stream_comid)
+        cosmo_dates, cosmo_values = _read_cosmo_ts_from_nc(watershed, subbasin, stream_comid, selected_dt)
 
         cosmo_forecast_Q = go.Scatter(
             name='COSMO Forecast',
@@ -1542,7 +1571,7 @@ def get_discharge_data(request):
 
         with xarray.open_dataset(seasonal_data_file) as seasonal_nc:
             seasonal_data = seasonal_nc.sel(rivid=180906)
-            base_date = dt.datetime.now()-dt.timedelta(days=30)
+            base_date = utc_now - dt.timedelta(days=30)
 
             # day_of_year = [base_date + dt.timedelta(days=ii)
             #                for ii in range(seasonal_data.dims['day_of_year'])]
@@ -1596,8 +1625,11 @@ def get_discharge_data(request):
         seasonal_nc.close()
 
         #  get ecmwf forecast from API
+        if selected_dt is None:
+            startdate = "{year}{month}{day}.0".format(year=yesterday_year,month=yesterday_month, day=yesterday_day)
+        else:
+            startdate = "{year}{month}{day}.0".format(year=selected_dt.strftime("%Y"),month=selected_dt.strftime("%m"), day=selected_dt.strftime("%d"))
 
-        startdate = "{year}{month}{day}.0".format(year=yesterday_year,month=yesterday_month, day=yesterday_day)
         watershed_brail_ecmwf = 'south_america'
         subbasin_brail_ecmwf = 'continental'
 
@@ -1610,33 +1642,33 @@ def get_discharge_data(request):
             y=mean_values,
         )
 
-        updatemenus = list([
-            dict(type="buttons",
-                 buttons=list([
-                     dict(label='None',
-                          method='relayout',
-                          args=['shapes', []]),
-                     dict(label='Observation',
-                          method='relayout',
-                          args=['shapes', observed_Q]),
-                     dict(label='COSMO forecast',
-                          method='relayout',
-                          args=['shapes', cosmo_forecast_Q]),
-                     dict(label='ECMWF forecasts mean',
-                          method='relayout',
-                          args=['shapes', ecmwf_forecast_mean_Q]),
-                     dict(label='ERA daily average',
-                          method='relayout',
-                          args=['shapes', era_daily_average]),
-                     dict(label='ERA daily SD upper',
-                          method='relayout',
-                          args=['shapes', std_max_scatter]),
-                     dict(label='ERA daily SD lower',
-                          method='relayout',
-                          args=['shapes', std_min_scatter]),
-                 ]),
-                 )
-        ])
+        # updatemenus = list([
+        #     dict(type="buttons",
+        #          buttons=list([
+        #              dict(label='None',
+        #                   method='relayout',
+        #                   args=['shapes', []]),
+        #              dict(label='Observation',
+        #                   method='relayout',
+        #                   args=['shapes', observed_Q]),
+        #              dict(label='COSMO forecast',
+        #                   method='relayout',
+        #                   args=['shapes', cosmo_forecast_Q]),
+        #              dict(label='ECMWF forecasts mean',
+        #                   method='relayout',
+        #                   args=['shapes', ecmwf_forecast_mean_Q]),
+        #              dict(label='ERA daily average',
+        #                   method='relayout',
+        #                   args=['shapes', era_daily_average]),
+        #              dict(label='ERA daily SD upper',
+        #                   method='relayout',
+        #                   args=['shapes', std_max_scatter]),
+        #              dict(label='ERA daily SD lower',
+        #                   method='relayout',
+        #                   args=['shapes', std_min_scatter]),
+        #          ]),
+        #          )
+        # ])
 
 
         layout = go.Layout(title='Streamflow',
@@ -1645,7 +1677,7 @@ def get_discharge_data(request):
                            yaxis=dict(
                                title='Discharge (m3/s)',
                                autorange=True),
-                           showlegend=False, updatemenus=updatemenus)
+                           showlegend=False)
 
         data = [observed_Q, cosmo_forecast_Q, era_daily_average, ecmwf_forecast_mean_Q, std_max_scatter, std_min_scatter]
 
@@ -1673,10 +1705,10 @@ def get_waterlevel_data(request):
 
         codEstacao = get_data['stationcode']
 
-        today = dt.datetime.now()
-        year = str(today.year)
-        month = str(today.strftime("%m"))
-        day = str(today.strftime("%d"))
+        utc_now = dt.datetime.utcnow()
+        year = str(utc_now.year)
+        month = str(utc_now.strftime("%m"))
+        day = str(utc_now.strftime("%d"))
         dataFim = day + '/' + month + '/' + year
         lastmonth = int(month) - 1
         dataInicio = day + '/' + str(lastmonth) + '/' + year
