@@ -1571,6 +1571,27 @@ def get_discharge_data(request):
                     color='#0066ff'
                 )
             )
+            std_max_scatter = go.Scatter(
+                name='ERA SD Upper',
+                x=day_of_year,
+                y=avg_plus_std,
+                fill=None,
+                mode='lines',
+                line=dict(
+                    color='#98fb98'
+                )
+            )
+
+            std_min_scatter = go.Scatter(
+                name='ERA SD Lower',
+                x=day_of_year,
+                y=avg_min_std,
+                fill='tonexty',
+                mode='lines',
+                line=dict(
+                    color='#98fb98',
+                )
+            )
 
         seasonal_nc.close()
 
@@ -1589,19 +1610,47 @@ def get_discharge_data(request):
             y=mean_values,
         )
 
+        updatemenus = list([
+            dict(type="buttons",
+                 buttons=list([
+                     dict(label='None',
+                          method='relayout',
+                          args=['shapes', []]),
+                     dict(label='Observation',
+                          method='relayout',
+                          args=['shapes', observed_Q]),
+                     dict(label='COSMO forecast',
+                          method='relayout',
+                          args=['shapes', cosmo_forecast_Q]),
+                     dict(label='ECMWF forecasts mean',
+                          method='relayout',
+                          args=['shapes', ecmwf_forecast_mean_Q]),
+                     dict(label='ERA daily average',
+                          method='relayout',
+                          args=['shapes', era_daily_average]),
+                     dict(label='ERA daily SD upper',
+                          method='relayout',
+                          args=['shapes', std_max_scatter]),
+                     dict(label='ERA daily SD lower',
+                          method='relayout',
+                          args=['shapes', std_min_scatter]),
+                 ]),
+                 )
+        ])
+
+
         layout = go.Layout(title='Streamflow',
                            xaxis=dict(
                                title='Dates', ),
                            yaxis=dict(
                                title='Discharge (m3/s)',
                                autorange=True),
-                           showlegend=False)
+                           showlegend=False, updatemenus=updatemenus)
 
-        # go.Figure(data=[observed_Q, cosmo_forecast_Q, ecmwf_forecast_mean_Q],
+        data = [observed_Q, cosmo_forecast_Q, era_daily_average, ecmwf_forecast_mean_Q, std_max_scatter, std_min_scatter]
 
         chart_obj = PlotlyView(
-            go.Figure(data=[observed_Q, cosmo_forecast_Q, era_daily_average, ecmwf_forecast_mean_Q],
-                      layout=layout)
+            go.Figure(data=data, layout=layout)
         )
 
         context = {
