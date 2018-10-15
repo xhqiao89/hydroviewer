@@ -345,7 +345,8 @@ def cosmo(request):
                                    name='geoserver_endpoint',
                                    disabled=True)
 
-    utc_now = dt.datetime.utcnow()
+    # utc_now = dt.datetime.utcnow()
+    utc_now = dt.datetime(2018, 10, 7, 11, 0)
     if utc_now.hour > 21:
         #today 12:00
         dt_last_model_run = dt.datetime(year=utc_now.year, month=utc_now.month, day=utc_now.day, hour= 12)
@@ -1509,7 +1510,8 @@ def get_discharge_data(request):
 
         codEstacao = get_data['stationcode']
 
-        utc_now = dt.datetime.utcnow()
+        # utc_now = dt.datetime.utcnow()
+        utc_now = dt.datetime(2018, 10, 7, 11, 0)
         year = str(utc_now.year)
         month = str(utc_now.strftime("%m"))
         day = str(utc_now.strftime("%d"))
@@ -1518,10 +1520,11 @@ def get_discharge_data(request):
         yesterday_year = str(yesterday.year)
         yesterday_month = str(yesterday.strftime("%m"))
         yesterday_day = str(yesterday.strftime("%d"))
-        dataFim = day + '/' + month + '/' + year
+        # dataFim = day + '/' + month + '/' + year
+        dataFim = '13/10/2018'
         lastmonth = int(month) - 1
-        dataInicio = day + '/' + str(lastmonth) + '/' + year
-        # dataInicio = '21/08/2018'
+        # dataInicio = day + '/' + str(lastmonth) + '/' + year
+        dataInicio = '13/09/2018'
         #
         url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
 
@@ -1596,9 +1599,6 @@ def get_discharge_data(request):
                 name='ERA Daily Average',
                 x=day_of_year,
                 y=season_avg,
-                line=dict(
-                    color='#0066ff'
-                )
             )
             std_max_scatter = go.Scatter(
                 name='ERA SD Upper',
@@ -1639,36 +1639,30 @@ def get_discharge_data(request):
         ecmwf_forecast_mean_Q = go.Scatter(
             name='ECMWF Mean Forecast',
             x=dates,
-            y=mean_values,
+            y=hres_values,
         )
 
-        # updatemenus = list([
-        #     dict(type="buttons",
-        #          buttons=list([
-        #              dict(label='None',
-        #                   method='relayout',
-        #                   args=['shapes', []]),
-        #              dict(label='Observation',
-        #                   method='relayout',
-        #                   args=['shapes', observed_Q]),
-        #              dict(label='COSMO forecast',
-        #                   method='relayout',
-        #                   args=['shapes', cosmo_forecast_Q]),
-        #              dict(label='ECMWF forecasts mean',
-        #                   method='relayout',
-        #                   args=['shapes', ecmwf_forecast_mean_Q]),
-        #              dict(label='ERA daily average',
-        #                   method='relayout',
-        #                   args=['shapes', era_daily_average]),
-        #              dict(label='ERA daily SD upper',
-        #                   method='relayout',
-        #                   args=['shapes', std_max_scatter]),
-        #              dict(label='ERA daily SD lower',
-        #                   method='relayout',
-        #                   args=['shapes', std_min_scatter]),
-        #          ]),
-        #          )
-        # ])
+        ecmwf_forecast_max_Q = go.Scatter(
+            name='ECMWF Max Forecast',
+            x=dates,
+            y=max_values,
+            fill=None,
+            mode='lines',
+            line=dict(
+                color='#98fb98'
+            )
+        )
+
+        ecmwf_forecast_min_Q = go.Scatter(
+            name='ECMWF Min Forecast',
+            x=dates,
+            y=min_values,
+            fill='tonexty',
+            mode='lines',
+            line=dict(
+                color='#98fb98',
+            )
+        )
 
 
         layout = go.Layout(title='Streamflow',
@@ -1679,7 +1673,7 @@ def get_discharge_data(request):
                                autorange=True),
                            showlegend=False)
 
-        data = [observed_Q, cosmo_forecast_Q, era_daily_average, ecmwf_forecast_mean_Q, std_max_scatter, std_min_scatter]
+        data = [observed_Q, cosmo_forecast_Q, era_daily_average, ecmwf_forecast_mean_Q, ecmwf_forecast_max_Q, ecmwf_forecast_min_Q]
 
         chart_obj = PlotlyView(
             go.Figure(data=data, layout=layout)
@@ -1706,6 +1700,7 @@ def get_waterlevel_data(request):
         codEstacao = get_data['stationcode']
 
         utc_now = dt.datetime.utcnow()
+        # utc_now = dt.datetime(2018, 10, 5, 11, 0)
         year = str(utc_now.year)
         month = str(utc_now.strftime("%m"))
         day = str(utc_now.strftime("%d"))

@@ -7,6 +7,7 @@ var default_extent,
     layers,
     wmsLayer,
     gages_layer,
+    catchment_layer,
     vectorLayer,
     feature,
     featureOverlay,
@@ -414,10 +415,30 @@ function view_watershed() {
                     style: pointStyle
                 });
 
+                catchment_layer = new ol.layer.Vector({
+                    id: 'brazil_gages',
+                    source: new ol.source.Vector({
+                        projection: 'EPSG:3857',
+                        url: '/static/hydroviewer_brazil/JSON/gages_to_streams.json',
+                        format: new ol.format.GeoJSON()
+                    }),
+                    style: pointStyle
+                });
+
+                catchment_layer = new ol.layer.Tile({
+                    source: new ol.source.TileWMS({
+                        url:'https://geoserver.byu.edu/arcgis/services/sherry/laplata_catchment/MapServer/WMSServer?',
+                        params: {'LAYERS': '0'},
+                        crossOrigin: 'anonymous'
+                    }),
+                    keyword: 'nwm'
+                });
+
                 feature_layer2 = gages_layer;
 
                 map.addLayer(wmsLayer);
                 map.addLayer(gages_layer);
+                map.addLayer(catchment_layer);
 
                 map.getView().fit(result.legend_extent, map.getSize())
             },
