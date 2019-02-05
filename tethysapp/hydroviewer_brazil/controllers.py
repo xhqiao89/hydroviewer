@@ -346,7 +346,7 @@ def cosmo(request):
                                    disabled=True)
 
     # utc_now = dt.datetime.utcnow()
-    utc_now = dt.datetime(2018, 10, 7, 11, 0)
+    utc_now = dt.datetime(2018, 10, 22, 11, 0)
     if utc_now.hour > 21:
         #today 12:00
         dt_last_model_run = dt.datetime(year=utc_now.year, month=utc_now.month, day=utc_now.day, hour= 12)
@@ -1511,7 +1511,7 @@ def get_discharge_data(request):
         codEstacao = get_data['stationcode']
 
         # utc_now = dt.datetime.utcnow()
-        utc_now = dt.datetime(2018, 10, 7, 11, 0)
+        utc_now = dt.datetime(2018, 10, 22, 11, 0)
         year = str(utc_now.year)
         month = str(utc_now.strftime("%m"))
         day = str(utc_now.strftime("%d"))
@@ -1520,11 +1520,11 @@ def get_discharge_data(request):
         yesterday_year = str(yesterday.year)
         yesterday_month = str(yesterday.strftime("%m"))
         yesterday_day = str(yesterday.strftime("%d"))
-        # dataFim = day + '/' + month + '/' + year
-        dataFim = '13/10/2018'
+        dataFim = day + '/' + month + '/' + year
+        # dataFim = '13/10/2018'
         lastmonth = int(month) - 1
-        # dataInicio = day + '/' + str(lastmonth) + '/' + year
-        dataInicio = '13/09/2018'
+        dataInicio = day + '/' + str(lastmonth) + '/' + year
+        # dataInicio = '13/09/2018'
         #
         url = 'http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=' + codEstacao + '&DataInicio=' + dataInicio + '&DataFim=' + dataFim
 
@@ -1639,6 +1639,12 @@ def get_discharge_data(request):
         ecmwf_forecast_mean_Q = go.Scatter(
             name='ECMWF Mean Forecast',
             x=dates,
+            y=mean_values,
+        )
+
+        ecmwf_forecast_hres_Q = go.Scatter(
+            name='ECMWF HRES Forecast',
+            x=dates,
             y=hres_values,
         )
 
@@ -1699,8 +1705,8 @@ def get_waterlevel_data(request):
 
         codEstacao = get_data['stationcode']
 
-        utc_now = dt.datetime.utcnow()
-        # utc_now = dt.datetime(2018, 10, 5, 11, 0)
+        # utc_now = dt.datetime.utcnow()
+        utc_now = dt.datetime(2018, 10, 22, 11, 0)
         year = str(utc_now.year)
         month = str(utc_now.strftime("%m"))
         day = str(utc_now.strftime("%d"))
