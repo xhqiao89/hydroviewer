@@ -438,7 +438,7 @@ function view_watershed() {
 
                 map.addLayer(wmsLayer);
                 map.addLayer(gages_layer);
-                map.addLayer(catchment_layer);
+                // map.addLayer(catchment_layer);
 
                 map.getView().fit(result.legend_extent, map.getSize())
             },
