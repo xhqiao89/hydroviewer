@@ -7,7 +7,7 @@ base_url = base_name.replace('_', '-')
 
 class Hydroviewer(TethysAppBase):
 
-    name = 'Brazil COSMO HydroViewer'
+    name = 'Brazil COSMO Streamflow Prediction'
     index = '{0}:home'.format(base_name)
     icon = '{0}/images/brazil_icon.png'.format(base_name)
     package = '{0}'.format(base_name)
